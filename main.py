@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from config import config
 from handlers import router
+from access import router as access_router, AccessMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,6 +34,13 @@ async def main():
     bot = Bot(token=config.BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
 
+    if not config.ADMIN_IDS:
+        logger.warning("ADMIN_IDS не задан в .env — заявки на доступ некому одобрять!")
+
+    # Заявки и управление доступом — без проверки; рабочие хэндлеры — только для одобренных
+    router.message.outer_middleware(AccessMiddleware())
+    router.callback_query.outer_middleware(AccessMiddleware())
+    dp.include_router(access_router)
     dp.include_router(router)
 
     # Удаляем вебхуки и запускаем polling

@@ -1,0 +1,15 @@
+[Unit]
+Description=Sneakora Telegram admin bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=sneakora
+WorkingDirectory=/opt/sneakora-bot
+ExecStart=/opt/sneakora-bot/venv/bin/python main.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

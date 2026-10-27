@@ -1,4 +1,5 @@
 import io
+import html
 import time
 import logging
 from typing import Optional, Dict
@@ -51,46 +52,42 @@ def get_post_keyboard(has_price: bool = False) -> InlineKeyboardMarkup:
 # Команды бота
 # =========================================================================
 
+def get_instruction_text() -> str:
+    """Пошаговая инструкция, которую бот показывает по /start и /help."""
+    return (
+        f"📖 <b>Инструкция — как сделать пост для канала {config.SHOP_NAME}</b>\n\n"
+        f"<b>Шаг 1. Отправь кроссовки</b>\n"
+        f"📸 Скинь фото кроссовок (можно альбом — бот возьмёт первое фото)\n"
+        f"или ✍️ напиши название модели текстом, например:\n"
+        f"<code>Nike Dunk Low Panda</code>\n\n"
+        f"<b>Шаг 2. Добавь подсказку (необязательно)</b>\n"
+        f"💡 В подписи к фото можно указать пол, размеры и цену:\n"
+        f"<code>женские 36-40 цена 70$</code>\n\n"
+        f"<b>Шаг 3. Проверь и допиши цену</b>\n"
+        f"Бот пришлёт готовый пост по шаблону. Под ним кнопки:\n"
+        f"💰 <b>Указать цену</b> — нажми и отправь цену (<code>65$</code> или просто <code>65</code>), пост обновится\n"
+        f"📋 <b>Текст для копирования</b> — один тап по тексту копирует пост целиком\n\n"
+        f"<b>Шаг 4. Опубликуй</b>\n"
+        f"📤 Перешли готовое фото с подписью в канал (Переслать → «Скрыть отправителя»)\n"
+        f"или вставь скопированный текст.\n\n"
+        f"⚠️ Если бот ошибся с моделью — отправь фото ещё раз с точным названием в подписи, "
+        f"например <code>Nike Dunk Low SP Plum</code>.\n\n"
+        f"Команды:\n"
+        f"/start — инструкция\n"
+        f"/template — пример готового поста\n"
+        f"/help — инструкция"
+    )
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message):
-    if not config.is_user_allowed(message.from_user.id):
-        await message.answer("⛔ Извините, у вас нет доступа к этому рабочему боту команды.")
-        return
-
-    provider_name = "Google Gemini" if config.AI_PROVIDER == "gemini" else "OpenAI"
-    text = (
-        f"👋 Привет, {message.from_user.first_name}!\n\n"
-        f"Я бот команды **{config.SHOP_NAME}** для быстрого создания постов с кроссовками.\n\n"
-        f"⚡ **Что я умею:**\n"
-        f"1. 📸 **Скинь мне фото кроссовок** (или альбом) — я распознаю модель через ИИ и сделаю готовый пост по шаблону.\n"
-        f"2. ✍️ **Напиши название модели текстом** (например: `Nike Dunk Low Panda` или `Asics Gel-Kayano 14`) — я найду характеристики и заполню шаблон.\n"
-        f"3. 💡 К фото можно сразу добавить подпись: например `36-40, женские` или `цена 65$`.\n\n"
-        f"⚙️ **Текущий ИИ:** {provider_name}\n"
-        f"💰 **Режим цены:** {config.PRICE_MODE}\n"
-        f"👤 **Админ:** {config.ADMIN_HANDLE}\n\n"
-        f"🚀 Просто отправь фото или название модели прямо сейчас!"
-    )
-    await message.answer(text, parse_mode="Markdown")
+    greeting = f"👋 Привет, {html.escape(message.from_user.first_name or '')}!\n\n"
+    await message.answer(greeting + get_instruction_text(), parse_mode="HTML")
 
 
 @router.message(Command("help"))
 async def cmd_help(message: Message):
-    if not config.is_user_allowed(message.from_user.id):
-        return
-
-    text = (
-        f"📖 **Инструкция по использованию:**\n\n"
-        f"• **Фото кроссовок:** Отправь одну или несколько фотографий. Бот возьмет первое четкое фото, распознает силуэт, расцветку и заполнит шаблон.\n"
-        f"• **Подсказки в подписи:** Если написать в подписи к фото, например: `цена 60$ женские 36-40`, бот учтет это при формировании поста.\n"
-        f"• **Поиск по названию:** Можно просто написать `Nike Air Jordan 4 Retro White Cement` — бот найдет точные цвета и характеристики.\n"
-        f"• **Кнопка 'Указать цену':** Позволяет в 1 клик добавить точную стоимость, если вы ее еще не ставили.\n"
-        f"• **Кнопка 'Текст для копирования':** Выдает пост в моноширинном блоке — один тап по нему на телефоне копирует весь текст целиком!\n\n"
-        f"Команды:\n"
-        f"/start — Перезапуск бота\n"
-        f"/template — Посмотреть текущий шаблон\n"
-        f"/help — Эта справка"
-    )
-    await message.answer(text, parse_mode="Markdown")
+    await message.answer(get_instruction_text(), parse_mode="HTML")
 
 
 @router.message(Command("template"))
@@ -116,10 +113,6 @@ async def cmd_template(message: Message):
 
 @router.message(F.photo)
 async def handle_photo(message: Message, bot: Bot, state: FSMContext):
-    if not config.is_user_allowed(message.from_user.id):
-        await message.answer("⛔ Доступ ограничен.")
-        return
-
     # Защита от спама альбомами (обрабатываем только первое фото из альбома)
     now = time.time()
     if message.media_group_id:
@@ -189,10 +182,6 @@ async def handle_photo(message: Message, bot: Bot, state: FSMContext):
 
 @router.message(F.text, ~F.text.startswith("/"))
 async def handle_text(message: Message, state: FSMContext):
-    if not config.is_user_allowed(message.from_user.id):
-        await message.answer("⛔ Доступ ограничен.")
-        return
-
     # Проверяем, не ждем ли мы ввод цены
     current_state = await state.get_state()
     if current_state == FormStates.waiting_for_price:

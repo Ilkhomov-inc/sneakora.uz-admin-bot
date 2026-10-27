@@ -24,3 +24,6 @@ ENV/
 
 # Temp test files
 test_*.py
+
+# Access list (approved users / requests)
+data/

@@ -6,6 +6,10 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
 
+def _parse_ids(raw: str) -> set:
+    return {int(uid.strip()) for uid in raw.split(",") if uid.strip().isdigit()}
+
+
 class Config:
     BOT_TOKEN: str = os.getenv("BOT_TOKEN", "").strip()
 
@@ -26,20 +30,14 @@ class Config:
     PRICE_MODE: str = os.getenv("PRICE_MODE", "placeholder").strip().lower()
     DEFAULT_SIZES: str = os.getenv("DEFAULT_SIZES", "Все размеры").strip()
 
-    # Allowed users (comma-separated Telegram IDs)
-    _allowed_raw: str = os.getenv("ALLOWED_USERS", "").strip()
-    ALLOWED_USERS: set = set()
-    if _allowed_raw:
-        for uid in _allowed_raw.split(","):
-            uid = uid.strip()
-            if uid.isdigit():
-                ALLOWED_USERS.add(int(uid))
+    # Access control (comma-separated Telegram IDs)
+    # ADMIN_IDS — получают заявки и управляют доступом через /users
+    # ALLOWED_USERS — постоянный доступ без заявки
+    ADMIN_IDS: set = _parse_ids(os.getenv("ADMIN_IDS", ""))
+    ALLOWED_USERS: set = _parse_ids(os.getenv("ALLOWED_USERS", ""))
 
-    @classmethod
-    def is_user_allowed(cls, user_id: int) -> bool:
-        if not cls.ALLOWED_USERS:
-            return True
-        return user_id in cls.ALLOWED_USERS
+    # Одобренные пользователи и заявки хранятся здесь (не перезаписывается при деплое)
+    DATA_DIR: Path = BASE_DIR / "data"
 
 
 config = Config()
